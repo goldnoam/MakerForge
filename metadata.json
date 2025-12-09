@@ -1,5 +1,5 @@
 {
   "name": "MakerForge",
-  "description": "The ultimate workbench for Raspberry Pi 5, Arduino R4, ESP32, and Pico W. Generate tutorials for sensors, retro games, and barcode readers instantly.",
+  "description": "The ultimate workbench for Raspberry Pi 5, Arduino (Uno/Nano), ESP32, ESP8266, and Pico W. Generate tutorials for sensors, retro games, and barcode readers instantly.",
   "requestFramePermissions": []
 }

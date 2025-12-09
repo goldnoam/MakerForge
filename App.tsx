@@ -585,7 +585,7 @@ const App: React.FC = () => {
             <footer className="mt-20 pt-8 border-t border-slate-800 text-center">
                <div className="flex flex-col items-center gap-4">
                  <p className="text-slate-500 text-sm">
-                   (C) Noam Gold AI 2025
+                   (C) Noam Gold 2025
                  </p>
                  <a 
                    href="mailto:gold.noam@gmail.com" 

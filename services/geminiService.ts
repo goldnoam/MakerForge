@@ -18,17 +18,17 @@ export const generateMakerGuide = async (
   const ai = getAiClient();
   const modelId = 'gemini-2.5-flash';
 
-  let systemInstruction = "You are an expert embedded systems engineer and maker. You specialize in Raspberry Pi, Arduino, ESP32, Pico W, Micro:bit, and M5Stick projects.";
+  let systemInstruction = "You are an expert embedded systems engineer and maker. You specialize in Raspberry Pi, Arduino (Uno, Nano, R4), ESP32, ESP8266, Pico W, Micro:bit, and M5Stick projects.";
   
   // Language preference handling
   if (languagePreference === 'micropython') {
     systemInstruction += " STRICT REQUIREMENT: You MUST provide the code examples in MicroPython. \n" +
       "- Ensure the code uses the correct libraries for the selected board (e.g., 'machine' for ESP32/Pico, specific Micro:bit libraries).\n" +
       "- START the code block with a comment explicitly stating the firmware compatibility, e.g., '# MicroPython for ESP32' or '# MicroPython for Pico W'.\n" +
-      "- If the board (like standard Arduino Uno) does not natively support MicroPython, clearly explain this constraint and provide a CircuitPython or MicroPython example for a compatible alternative (like Pico/ESP32) as the solution.";
+      "- If the board (like standard Arduino Uno/Nano) does not natively support MicroPython, clearly explain this constraint and provide a CircuitPython or MicroPython example for a compatible alternative (like Pico/ESP32) as the solution.";
   } else if (languagePreference === 'cpp') {
     systemInstruction += " STRICT REQUIREMENT: You MUST provide the code examples in C++ (Arduino Framework/PlatformIO). \n" +
-      "- Ensure compatibility with the specific board architecture (e.g. AVR for Uno, ESP-IDF/Arduino for ESP32, Renesas for R4).\n" +
+      "- Ensure compatibility with the specific board architecture (e.g. AVR for Uno/Nano, ESP-IDF/Arduino for ESP32, Renesas for R4).\n" +
       "- Include necessary library imports (e.g., <Wire.h>, <SPI.h>, <Adafruit_Sensor.h>).\n" +
       "- START the code block with a comment explicitly stating compatibility, e.g., '// C++ (Arduino) for ESP32'.";
   } else if (languagePreference === 'circuitpython') {
@@ -36,7 +36,7 @@ export const generateMakerGuide = async (
       "- Assume the user has flashed the latest CircuitPython firmware.\n" +
       "- Specify any required libraries from the CircuitPython Bundle (e.g., adafruit_bus_device, adafruit_displayio).\n" +
       "- START the code block with a comment explicitly stating compatibility, e.g., '# CircuitPython for Pico W'.\n" +
-      "- If the selected board (like standard Arduino Uno R3) does not support CircuitPython, explain this and provide code for a supported board (like Pico W or Metro M4) as an alternative.";
+      "- If the selected board (like standard Arduino Uno/Nano) does not support CircuitPython, explain this and provide code for a supported board (like Pico W or Metro M4) as an alternative.";
   } else {
     // Default behavior
     systemInstruction += " Provide concise, clear wiring instructions and complete, well-commented code examples. Use Python for Raspberry Pi/Pico, C++ for Arduino/ESP32/M5Stick, and MakeCode (JavaScript/Blocks description) or MicroPython for Micro:bit.";
