@@ -18,7 +18,8 @@ import {
   ArrowRight,
   Code2,
   ChevronDown,
-  Check
+  Check,
+  Calendar
 } from 'lucide-react';
 import { BoardType, AppView, SavedProject } from './types';
 import { generateMakerGuide } from './services/geminiService';
@@ -240,13 +241,21 @@ const App: React.FC = () => {
   // Saved Projects
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [activeProject, setActiveProject] = useState<SavedProject | null>(null);
+  const [saveTitle, setSaveTitle] = useState("");
 
   useEffect(() => {
     // Load projects from localStorage
     const saved = localStorage.getItem('makerforge_saved_projects');
     if (saved) {
       try {
-        setSavedProjects(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        // Migration for legacy data without title
+        const migrated = parsed.map((p: any) => ({
+          ...p,
+          title: p.title || p.topic || "Untitled Project"
+        }));
+        setSavedProjects(migrated);
       } catch (e) {
         console.error("Failed to parse saved projects", e);
       }
@@ -276,6 +285,8 @@ const App: React.FC = () => {
     setError(null);
     setGeneratedContent(null);
     setSaveSuccess(false);
+    setActiveProject(null);
+    setSaveTitle(topic); // Auto-populate title with topic
 
     let type: 'sensor' | 'game' | 'barcode' | 'network' | 'scratch' = 'sensor';
     if (currentView === AppView.GAMES) type = 'game';
@@ -295,6 +306,11 @@ const App: React.FC = () => {
 
   const handleSaveProject = () => {
     if (!generatedContent) return;
+    if (!saveTitle.trim()) {
+      // Basic validation
+      const topic = customInput || selectedPreset || "Untitled Project";
+      setSaveTitle(topic);
+    }
     
     const newProject: SavedProject = {
       id: Date.now().toString(),
@@ -302,7 +318,8 @@ const App: React.FC = () => {
       board: selectedBoard,
       view: currentView,
       topic: customInput || selectedPreset || "Untitled Project",
-      content: generatedContent
+      content: generatedContent,
+      title: saveTitle.trim() || customInput || selectedPreset || "Untitled Project"
     };
 
     const updatedProjects = [newProject, ...savedProjects];
@@ -317,14 +334,21 @@ const App: React.FC = () => {
     const updated = savedProjects.filter(p => p.id !== id);
     setSavedProjects(updated);
     localStorage.setItem('makerforge_saved_projects', JSON.stringify(updated));
+    
+    if (activeProject?.id === id) {
+      setActiveProject(null);
+      setGeneratedContent(null);
+    }
   };
 
   const handleLoadProject = (project: SavedProject) => {
     setSelectedBoard(project.board);
     setCurrentView(project.view);
     setGeneratedContent(project.content);
-    setCustomInput(project.topic); // Set as custom input to show what was generated
+    setCustomInput(project.topic); 
     setSelectedPreset("");
+    setActiveProject(project);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const renderPlaceholder = () => {
@@ -444,8 +468,9 @@ const App: React.FC = () => {
             </div>
             
             <h3 className="font-bold text-white mb-1 group-hover:text-maker-accent transition-colors truncate">
-              {project.topic}
+              {project.title}
             </h3>
+            <p className="text-xs text-slate-500 mb-2 truncate">Topic: {project.topic}</p>
             <div className="flex justify-between items-center text-xs text-slate-500 mt-4 border-t border-slate-700/50 pt-3">
               <span>{new Date(project.timestamp).toLocaleDateString()}</span>
               <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform text-maker-accent">
@@ -558,17 +583,6 @@ const App: React.FC = () => {
                   <span className="text-sm text-slate-400">{savedProjects.length} Projects</span>
                 </div>
                 {renderSavedProjects()}
-                
-                {/* If viewing a loaded project content while in SAVED view */}
-                {generatedContent && (
-                  <div className="mt-12 border-t border-slate-700 pt-8 animate-fade-in">
-                     <div className="flex items-center gap-2 mb-6">
-                        <div className="h-8 w-1 bg-maker-accent rounded-full"></div>
-                        <h2 className="text-2xl font-bold text-white">Project View</h2>
-                     </div>
-                     <MarkdownView content={generatedContent} />
-                  </div>
-                )}
               </div>
             ) : (
               <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-700 mb-8 backdrop-blur-sm sticky top-0 z-0 shadow-lg">
@@ -648,20 +662,55 @@ const App: React.FC = () => {
                     
                     {generatedContent ? (
                       <div className="relative">
-                        <div className="flex justify-end mb-4">
-                           <button 
-                             onClick={handleSaveProject}
-                             disabled={saveSuccess}
-                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                               saveSuccess 
-                                 ? 'bg-maker-success text-maker-dark' 
-                                 : 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white'
-                             }`}
-                           >
-                             {saveSuccess ? <CheckIcon /> : <Save className="w-4 h-4" />}
-                             {saveSuccess ? 'Saved!' : 'Save Project'}
-                           </button>
-                        </div>
+                        {/* If viewing a loaded project, show details banner. Else show Save controls. */}
+                        {activeProject ? (
+                           <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
+                              <div>
+                                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Archive className="w-5 h-5 text-maker-accent" />
+                                    {activeProject.title}
+                                 </h2>
+                                 <div className="flex flex-wrap gap-3 mt-2 text-sm text-slate-400">
+                                    <span className="flex items-center gap-1"><Cpu className="w-3 h-3"/> {BOARDS.find(b => b.id === activeProject.board)?.name}</span>
+                                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3"/> {new Date(activeProject.timestamp).toLocaleDateString()}</span>
+                                    <span className="bg-slate-700 px-2 py-0.5 rounded text-xs text-slate-300">Topic: {activeProject.topic}</span>
+                                 </div>
+                              </div>
+                              <button 
+                                onClick={() => { 
+                                  setActiveProject(null); 
+                                  setGeneratedContent(null);
+                                  setCustomInput("");
+                                }} 
+                                className="text-slate-500 hover:text-white text-sm underline whitespace-nowrap"
+                              >
+                                Close Project
+                              </button>
+                           </div>
+                        ) : (
+                          <div className="flex flex-col md:flex-row justify-end items-center gap-3 mb-6 p-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
+                             <input 
+                               type="text" 
+                               value={saveTitle}
+                               onChange={(e) => setSaveTitle(e.target.value)}
+                               placeholder="Project Title"
+                               className="w-full md:w-64 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:ring-1 focus:ring-maker-accent outline-none"
+                             />
+                             <button 
+                               onClick={handleSaveProject}
+                               disabled={saveSuccess || !saveTitle.trim()}
+                               className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                 saveSuccess 
+                                   ? 'bg-maker-success text-maker-dark' 
+                                   : 'bg-maker-accent text-maker-dark hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed'
+                               }`}
+                             >
+                               {saveSuccess ? <CheckIcon /> : <Save className="w-4 h-4" />}
+                               {saveSuccess ? 'Saved!' : 'Save Project'}
+                             </button>
+                          </div>
+                        )}
+
                         <MarkdownView content={generatedContent} />
                       </div>
                     ) : renderPlaceholder()}

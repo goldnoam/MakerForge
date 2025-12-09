@@ -33,6 +33,7 @@ export interface GuideResponse {
 
 export interface SavedProject {
   id: string;
+  title: string;
   timestamp: number;
   board: BoardType;
   view: AppView;
