@@ -6,7 +6,7 @@ const LoadingSpinner: React.FC = () => (
       <div className="absolute top-0 left-0 w-full h-full border-4 border-slate-700 rounded-full"></div>
       <div className="absolute top-0 left-0 w-full h-full border-4 border-maker-accent rounded-full border-t-transparent animate-spin"></div>
     </div>
-    <span className="text-slate-400 font-mono text-sm">Consulting the AI Neural Net...</span>
+    <span className="text-slate-400 font-mono text-sm">Generating Guide...</span>
   </div>
 );
 

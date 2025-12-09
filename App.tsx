@@ -15,7 +15,8 @@ import {
   Archive,
   Trash2,
   Mail,
-  ArrowRight
+  ArrowRight,
+  Code2
 } from 'lucide-react';
 import { BoardType, AppView, SavedProject } from './types';
 import { generateMakerGuide } from './services/geminiService';
@@ -134,6 +135,7 @@ const App: React.FC = () => {
   // Inputs
   const [customInput, setCustomInput] = useState("");
   const [selectedPreset, setSelectedPreset] = useState("");
+  const [languagePreference, setLanguagePreference] = useState("default");
 
   // Saved Projects
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
@@ -180,7 +182,7 @@ const App: React.FC = () => {
     if (currentView === AppView.SCRATCH) type = 'scratch';
 
     try {
-      const content = await generateMakerGuide(selectedBoard, topic, type);
+      const content = await generateMakerGuide(selectedBoard, topic, type, languagePreference);
       setGeneratedContent(content);
     } catch (e) {
       setError("Failed to generate content. Please try again.");
@@ -364,7 +366,7 @@ const App: React.FC = () => {
             <Bot className="w-8 h-8 text-maker-accent" />
             MakerForge
           </h1>
-          <p className="text-xs text-slate-400 mt-1">AI-Powered Workbench</p>
+          <p className="text-xs text-slate-400 mt-1">Smart Maker Workbench</p>
         </div>
 
         <nav className="p-4 flex-1 overflow-y-auto">
@@ -382,7 +384,7 @@ const App: React.FC = () => {
 
         <div className="p-4 border-t border-slate-700 hidden md:block">
           <div className="text-xs text-slate-500 text-center">
-            Powered by Gemini 2.5 Flash
+            Powered by Gemini
           </div>
         </div>
       </aside>
@@ -422,7 +424,7 @@ const App: React.FC = () => {
                 <div className="bg-gradient-to-br from-indigo-900/50 to-slate-900 border border-indigo-500/30 rounded-2xl p-8 shadow-2xl">
                   <h2 className="text-3xl font-bold text-white mb-4">Welcome, Maker.</h2>
                   <p className="text-lg text-slate-300 mb-6 max-w-2xl">
-                    This workbench uses advanced AI to generate code, wiring diagrams, and tutorials for your electronics projects. 
+                    This workbench helps you generate code, wiring diagrams, and tutorials for your electronics projects. 
                     Now supporting <strong>Micro:bit</strong>, <strong>M5Stick</strong>, <strong>ESP8266</strong>, and <strong>Arduino Nano</strong>!
                   </p>
                   
@@ -467,51 +469,78 @@ const App: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-700 mb-8 backdrop-blur-sm sticky top-0 z-0">
-                <div className="flex flex-col md:flex-row gap-4 items-end">
-                  <div className="flex-1 w-full">
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      {currentView === AppView.SENSORS ? "Choose Sensor" : 
-                       currentView === AppView.GAMES ? "Choose Game" : 
-                       currentView === AppView.NETWORK ? "Network Task" :
-                       currentView === AppView.SCRATCH ? "Coding Task" :
-                       "Hardware Type"}
-                    </label>
-                    <select 
-                      value={selectedPreset}
-                      onChange={(e) => {
-                        setSelectedPreset(e.target.value);
-                        setCustomInput("");
-                      }}
-                      className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-maker-accent focus:border-transparent outline-none"
-                    >
-                      <option value="">-- Select from Presets --</option>
-                      {getPresets().map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
+              <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-700 mb-8 backdrop-blur-sm sticky top-0 z-0 shadow-lg">
+                <div className="flex flex-col gap-4">
                   
-                  <div className="flex-1 w-full relative">
-                     <span className="absolute -top-6 left-0 text-xs text-slate-500 uppercase font-bold">Or Type Custom</span>
-                    <input 
-                      type="text" 
-                      value={customInput}
-                      onChange={(e) => {
-                        setCustomInput(e.target.value);
-                        setSelectedPreset("");
-                      }}
-                      placeholder="e.g., Custom requirements..."
-                      className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-maker-accent focus:border-transparent outline-none"
-                    />
+                  {/* Top Row: Language and Preset */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    
+                    <div className="md:col-span-4">
+                      <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                        <Code2 className="w-4 h-4 text-maker-accent" />
+                        Code Language
+                      </label>
+                      <select 
+                        value={languagePreference}
+                        onChange={(e) => setLanguagePreference(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-maker-accent focus:border-transparent outline-none"
+                      >
+                        <option value="default">Auto (Recommended)</option>
+                        <option value="micropython">MicroPython</option>
+                        <option value="cpp">C++ / Arduino</option>
+                        <option value="circuitpython">CircuitPython</option>
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-8">
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        {currentView === AppView.SENSORS ? "Choose Sensor" : 
+                        currentView === AppView.GAMES ? "Choose Game" : 
+                        currentView === AppView.NETWORK ? "Network Task" :
+                        currentView === AppView.SCRATCH ? "Coding Task" :
+                        "Hardware Type"}
+                      </label>
+                      <select 
+                        value={selectedPreset}
+                        onChange={(e) => {
+                          setSelectedPreset(e.target.value);
+                          setCustomInput("");
+                        }}
+                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-maker-accent focus:border-transparent outline-none"
+                      >
+                        <option value="">-- Select from Presets --</option>
+                        {getPresets().map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+
                   </div>
 
-                  <button 
-                    onClick={handleGenerate}
-                    disabled={isLoading || (!selectedPreset && !customInput)}
-                    className="w-full md:w-auto px-8 py-3 bg-maker-accent hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed text-maker-dark font-bold rounded-lg shadow-lg shadow-maker-accent/20 transition-all flex items-center justify-center gap-2"
-                  >
-                    {isLoading ? <span className="animate-spin">⟳</span> : <Zap className="w-5 h-5" />}
-                    Generate
-                  </button>
+                  {/* Bottom Row: Custom Input and Button */}
+                  <div className="flex flex-col md:flex-row gap-4 items-end">
+                    <div className="flex-1 w-full relative">
+                      <span className="absolute -top-6 left-0 text-xs text-slate-500 uppercase font-bold pt-4">Or Type Custom</span>
+                      <input 
+                        type="text" 
+                        value={customInput}
+                        onChange={(e) => {
+                          setCustomInput(e.target.value);
+                          setSelectedPreset("");
+                        }}
+                        placeholder="e.g., Custom requirements..."
+                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-maker-accent focus:border-transparent outline-none"
+                      />
+                    </div>
+
+                    <button 
+                      onClick={handleGenerate}
+                      disabled={isLoading || (!selectedPreset && !customInput)}
+                      className="w-full md:w-auto px-8 py-3 bg-maker-accent hover:bg-sky-400 disabled:opacity-50 disabled:cursor-not-allowed text-maker-dark font-bold rounded-lg shadow-lg shadow-maker-accent/20 transition-all flex items-center justify-center gap-2"
+                    >
+                      {isLoading ? <span className="animate-spin">⟳</span> : <Zap className="w-5 h-5" />}
+                      Generate
+                    </button>
+                  </div>
+
                 </div>
               </div>
             )}
