@@ -16,7 +16,9 @@ import {
   Trash2,
   Mail,
   ArrowRight,
-  Code2
+  Code2,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { BoardType, AppView, SavedProject } from './types';
 import { generateMakerGuide } from './services/geminiService';
@@ -71,6 +73,35 @@ const SCRATCH_TASKS = [
   "Display Text on Matrix/Screen"
 ];
 
+const LANGUAGES = [
+  { id: 'default', label: 'Auto Detect', desc: 'Best match for board', icon: <Bot className="w-4 h-4" /> },
+  { id: 'micropython', label: 'MicroPython', desc: 'Python for microcontrollers', icon: <Terminal className="w-4 h-4 text-yellow-400" /> },
+  { id: 'cpp', label: 'C++ / Arduino', desc: 'Standard embedded code', icon: <Code2 className="w-4 h-4 text-blue-400" /> },
+  { id: 'circuitpython', label: 'CircuitPython', desc: 'Adafruit python flavor', icon: <Zap className="w-4 h-4 text-purple-400" /> },
+];
+
+const isLanguageSupported = (board: BoardType, langId: string) => {
+  if (langId === 'default') return true;
+  
+  // Linux SBCs: RPi 5 uses Standard Python (covered by default) or C++
+  if (board === BoardType.RPI5) return langId === 'cpp';
+
+  // 8-bit / Classic AVR: C++ only
+  if (board === BoardType.ARDUINO_NANO) return langId === 'cpp';
+
+  // Arduino R4: Renesas based, mostly C++. Early MP/CP support exists but stick to C++ for reliability.
+  if (board === BoardType.ARDUINO_R4) return langId === 'cpp'; 
+
+  // ESP8266: No CircuitPython support
+  if (board === BoardType.ESP8266) return langId !== 'circuitpython';
+
+  // Micro:bit: MicroPython or MakeCode (Default). No CircuitPython.
+  if (board === BoardType.MICROBIT) return langId !== 'circuitpython';
+
+  // ESP32, Pico W, M5Stick support all options
+  return true;
+};
+
 // --- Sub Components ---
 
 interface BoardCardProps {
@@ -121,6 +152,75 @@ const NavButton: React.FC<NavButtonProps> = ({ view, isActive, icon, label, onCl
   </button>
 );
 
+const LanguageSelector: React.FC<{ value: string; onChange: (val: string) => void; selectedBoard: BoardType }> = ({ value, onChange, selectedBoard }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  // Validate if current selection is supported, else fallback to visual default
+  const validValue = isLanguageSupported(selectedBoard, value) ? value : 'default';
+  const selected = LANGUAGES.find(l => l.id === validValue) || LANGUAGES[0];
+
+  return (
+    <div className="relative">
+      <label className="block text-sm font-medium text-slate-300 mb-2">Code Language</label>
+      <div className="relative">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-left flex items-center justify-between hover:border-maker-accent transition-colors group focus:outline-none focus:ring-2 focus:ring-maker-accent"
+        >
+          <div className="flex items-center gap-3">
+            <div className={`p-1.5 rounded-md bg-slate-800 group-hover:bg-slate-700 transition-colors border border-slate-700`}>
+              {selected.icon}
+            </div>
+            <div>
+              <div className="font-medium text-white text-sm leading-none mb-1">{selected.label}</div>
+              <div className="text-[10px] text-slate-500 leading-none">{selected.desc}</div>
+            </div>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden animate-fade-in">
+              {LANGUAGES.map((lang) => {
+                const supported = isLanguageSupported(selectedBoard, lang.id);
+                return (
+                  <button
+                    key={lang.id}
+                    disabled={!supported}
+                    onClick={() => {
+                      if (supported) {
+                        onChange(lang.id);
+                        setIsOpen(false);
+                      }
+                    }}
+                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors border-l-2 
+                      ${value === lang.id ? 'bg-slate-700/30 border-maker-accent' : 'border-transparent'}
+                      ${supported ? 'hover:bg-slate-700/50 cursor-pointer' : 'opacity-40 cursor-not-allowed bg-slate-900/50'}
+                    `}
+                  >
+                    <div className="p-1.5 rounded-md bg-slate-900 border border-slate-700">
+                      {lang.icon}
+                    </div>
+                    <div className="flex-1">
+                      <div className={`text-sm font-medium ${value === lang.id ? 'text-maker-accent' : 'text-slate-200'}`}>
+                        {lang.label} {supported ? '' : '(N/A)'}
+                      </div>
+                      <div className="text-[10px] text-slate-500">{lang.desc}</div>
+                    </div>
+                    {value === lang.id && <Check className="w-4 h-4 text-maker-accent" />}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // --- Main Component ---
 
 const App: React.FC = () => {
@@ -154,14 +254,16 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Reset generation state when view changes, unless we are loading a saved project
+    // Reset generation state when view changes
     if (currentView !== AppView.SAVED) {
-      // We don't auto-clear generatedContent here because we might want to preserve it if the user just switches tabs slightly
-      // But based on previous logic, we cleared it. Let's stick to clearing input but maybe keep content if it's relevant?
-      // For now, adhere to previous behavior of resetting inputs.
       setError(null);
     }
   }, [currentView, selectedBoard]);
+
+  // Reset language to default if the board changes to ensure compatibility
+  useEffect(() => {
+    setLanguagePreference('default');
+  }, [selectedBoard]);
 
   const handleGenerate = async () => {
     const topic = customInput || selectedPreset;
@@ -475,21 +577,8 @@ const App: React.FC = () => {
                   {/* Top Row: Language and Preset */}
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                     
-                    <div className="md:col-span-4">
-                      <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
-                        <Code2 className="w-4 h-4 text-maker-accent" />
-                        Code Language
-                      </label>
-                      <select 
-                        value={languagePreference}
-                        onChange={(e) => setLanguagePreference(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-maker-accent focus:border-transparent outline-none"
-                      >
-                        <option value="default">Auto (Recommended)</option>
-                        <option value="micropython">MicroPython</option>
-                        <option value="cpp">C++ / Arduino</option>
-                        <option value="circuitpython">CircuitPython</option>
-                      </select>
+                    <div className="md:col-span-4 z-30">
+                      <LanguageSelector value={languagePreference} onChange={setLanguagePreference} selectedBoard={selectedBoard} />
                     </div>
 
                     <div className="md:col-span-8">
